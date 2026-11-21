@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vivlos — AI Видеозвонки</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='di.css') }}"/>
+
+  <!-- Face API for emotion detection -->
+  <script src="{{ url_for('static', filename='face-api.min.js') }}"></script>
+  <!-- TensorFlow.js Face Landmarks Detection (478 pts + iris) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.20.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.20.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js"></script>
+  <!-- SocketIO realtime -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body class="desktop">
+
+<!-- ══ LOGIN ══ -->
+<div id="login-desk-screen" class="login-desk">
+  <div class="login-desk-card">
+
+    <!-- ── Левая панель (декоративная) ── -->
+    <div class="login-desk-left" id="login-left-panel">
+      <div class="ldl-deco-bg"></div>
+
+      <!-- Переключатель тем на логин странице -->
+      <!-- Мини точки для смены цвета левой панели -->
+      <div class="login-left-theme-dots">
+        <div class="lltd active" data-lt="default"  style="background:#0ea5e9" onclick="setLoginTheme('default',this)"></div>
+        <div class="lltd"        data-lt="galactic" style="background:#a855f7" onclick="setLoginTheme('galactic',this)"></div>
+        <div class="lltd"        data-lt="forest"   style="background:#10b981" onclick="setLoginTheme('forest',this)"></div>
+        <div class="lltd"        data-lt="sunset"   style="background:#f97316" onclick="setLoginTheme('sunset',this)"></div>
+        <div class="lltd"        data-lt="sakura"   style="background:#ec4899" onclick="setLoginTheme('sakura',this)"></div>
+        <div class="lltd"        data-lt="dark"     style="background:#334155" onclick="setLoginTheme('dark',this)"></div>
+      </div>
+
+      <svg class="ldl-svg-lines" viewBox="0 0 480 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="80"  y1="80"  x2="240" y2="300" stroke="white" stroke-width=".8"/>
+        <line x1="400" y1="100" x2="240" y2="300" stroke="white" stroke-width=".8"/>
+        <line x1="60"  y1="300" x2="240" y2="300" stroke="white" stroke-width=".8"/>
+        <line x1="420" y1="310" x2="240" y2="300" stroke="white" stroke-width=".8"/>
+        <line x1="90"  y1="490" x2="240" y2="300" stroke="white" stroke-width=".8"/>
+        <line x1="390" y1="470" x2="240" y2="300" stroke="white" stroke-width=".8"/>
+        <circle cx="240" cy="300" r="3" fill="rgba(255,255,255,0.5)"/>
+        <circle cx="80"  cy="80"  r="3" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="400" cy="100" r="3" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="60"  cy="300" r="3" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="420" cy="310" r="3" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="90"  cy="490" r="3" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="390" cy="470" r="3" fill="rgba(255,255,255,0.3)"/>
+      </svg>
+
+      <div class="ldl-float-icons">
+        <div class="ldl-fi"><i class="ri-vidicon-line"></i></div>
+        <div class="ldl-fi"><i class="ri-mic-line"></i></div>
+        <div class="ldl-fi"><i class="ri-mental-health-line"></i></div>
+        <div class="ldl-fi"><i class="ri-robot-line"></i></div>
+        <div class="ldl-fi"><i class="ri-graduation-cap-line"></i></div>
+        <div class="ldl-fi"><i class="ri-translate-2"></i></div>
+      </div>
+
+      <div class="ldl-center">
+        <div class="ldl-logo-wrap">
+          <div class="ldl-logo-icon"><i class="ri-sparkling-2-fill"></i></div>
+          <div class="ldl-logo-name">Vivlos</div>
+        </div>
+        <div class="ldl-divider"></div>
+        <div class="ldl-tagline">AI · Voice · Connect</div>
+
+        <div class="ldl-orb">
+          <div class="ldl-orb-ring"></div>
+          <div class="ldl-orb-ring2"></div>
+          <i class="ri-sparkling-2-line"></i>
+        </div>
+      </div>
+
+      <div class="ldl-tags">
+        <span class="ldl-tag" data-i18n="tag_free">🆓 Бесплатно</span>
+        <span class="ldl-tag" data-i18n="tag_secure">🔒 Безопасно</span>
+        <span class="ldl-tag" data-i18n="tag_multilang">🌐 Мультиязычно</span>
+      </div>
+    </div>
+
+    <!-- ── Правая панель (форма) ── -->
+    <div class="login-desk-right">
+      <!-- ✨ Переключатель языка -->
+      <div class="lang-switch-top">
+        <button class="lang-pill on" data-lang="ru" onclick="switchLang('ru')">🇷🇺 Русский</button>
+        <button class="lang-pill"    data-lang="kk" onclick="switchLang('kk')">🇰🇿 Қазақша</button>
+      </div>
+
+      <div class="ldr-title" data-i18n="welcome">Добро пожаловать</div>
+      <div class="ldr-sub"   data-i18n="login_subtitle">Войди или создай бесплатный аккаунт</div>
+
+      <div class="tab-sw">
+        <button class="tsb on" id="tin"  onclick="swTab('in')"  data-i18n="tab_login">Войти</button>
+        <button class="tsb"    id="treg" onclick="swTab('reg')" data-i18n="tab_register">Регистрация</button>
+      </div>
+
+      <div id="f-login">
+        <div class="field"><label data-i18n="email">Email</label><input type="email" id="l-em" data-i18n-placeholder="ph_email" placeholder="you@mail.com"/></div>
+        <div class="field"><label data-i18n="password">Пароль</label><input type="password" id="l-pw" data-i18n-placeholder="ph_password" placeholder="••••••••"/></div>
+        <button class="btn-main" onclick="doLogin()" data-i18n="login_btn">Войти</button>
+      </div>
+
+      <div id="f-reg" style="display:none;">
+        <div class="field-row" style="display:flex;gap:10px">
+          <div class="field" style="flex:1"><label data-i18n="field_name">Имя</label><input type="text" id="r-nm" data-i18n-placeholder="ph_name" placeholder="Алия"/></div>
+          <div class="field" style="flex:1"><label data-i18n="field_surname">Фамилия</label><input type="text" id="r-sn" data-i18n-placeholder="ph_surname" placeholder="Иванова"/></div>
+        </div>
+        <div class="field"><label data-i18n="email">Email</label><input type="email" id="r-em" data-i18n-placeholder="ph_email" placeholder="you@mail.com"/></div>
+        <div class="field"><label data-i18n="password">Пароль</label><input type="password" id="r-pw" data-i18n-placeholder="ph_password_min" placeholder="Минимум 6 символов"/></div>
+        <div class="field">
+          <label data-i18n="field_age">Возраст</label>
+          <input type="number" id="r-age" min="5" max="100" placeholder="20" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--sky-pale);color:var(--text);outline:none"/>
+        </div>
+        <div class="field">
+          <label data-i18n="who_are_you">Кто вы?</label>
+          <div class="age-row">
+            <button class="age-chip sel" id="ca" onclick="selAge('adult')" data-i18n="adult">👤 Взрослый</button>
+            <button class="age-chip"     id="ck" onclick="selAge('kid')"   data-i18n="kid">🧒 Ребёнок</button>
+          </div>
+        </div>
+        <button class="btn-main" onclick="doReg()" data-i18n="register_btn">Создать аккаунт</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app-desk" class="desktop-layout" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="s-logo-icon"><i class="ri-sparkling-2-fill"></i></div>
+      <div class="s-logo-name">Vivlos</div>
+    </div>
+    <div class="sidebar-user">
+      <div class="s-user-ava" id="s-user-ava-el">А</div>
+      <div class="s-user-info">
+        <div class="s-user-name"  id="s-user-name-el">Пользователь</div>
+        <div class="s-user-email" id="s-user-email-el">user@vivlos.ai</div>
+      </div>
+      <div class="s-streak"><i class="ri-fire-fill"></i> <span id="ds-streak-pill">1</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="snav-item active" id="sn-home"     onclick="dNavTo('home')"><i class="ri-home-5-line"></i><span data-i18n="nav_home">Главная</span></button>
+      <button class="snav-item"        id="sn-create"   onclick="dNavTo('create')"><i class="ri-magic-line"></i><span data-i18n="nav_create">Создать бота</span><span class="snav-create-badge">+</span></button>
+      <button class="snav-item"        id="sn-history"  onclick="dNavTo('history')"><i class="ri-history-line"></i><span data-i18n="nav_history">История звонков</span></button>
+      <button class="snav-item"        id="sn-notifs"   onclick="dNavTo('notifs')"><i class="ri-notification-3-line"></i><span data-i18n="nav_notifs">Уведомления</span><span class="snav-badge" id="notif-dot">3</span></button>
+      <button class="snav-item"        id="sn-profile"  onclick="dNavTo('profile')"><i class="ri-user-3-line"></i><span data-i18n="nav_profile">Профиль</span></button>
+      <button class="snav-item"        id="sn-settings" onclick="dNavTo('settings')"><i class="ri-settings-3-line"></i><span data-i18n="nav_settings">Настройки</span></button>
+    </nav>
+    <div class="sidebar-footer">
+      <!-- ✨ Переключатель языка в sidebar -->
+      <div class="lang-switch-side">
+        <button class="lang-pill-mini on" data-lang="ru" onclick="switchLang('ru')">RU</button>
+        <button class="lang-pill-mini"    data-lang="kk" onclick="switchLang('kk')">KK</button>
+      </div>
+      <button class="snav-item logout" onclick="doLogout()"><i class="ri-logout-box-r-line"></i><span data-i18n="logout">Выйти</span></button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="desktop-header">
+      <div class="dh-title" id="dh-title" data-i18n="nav_home">Главная</div>
+      <div class="dh-actions">
+        <div class="dh-search"><i class="ri-search-line"></i><input type="text" data-i18n-placeholder="search_placeholder" placeholder="Найти компаньона..."/></div>
+        <div class="dh-notif-btn" onclick="dNavTo('notifs')"><i class="ri-notification-3-line"></i><span class="dh-notif-dot" id="dh-notif-dot"></span></div>
+        <div class="dh-user-ava" id="u-ava" onclick="dNavTo('profile')">А</div>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div class="page active" id="dp-home">
+      <div class="home-welcome">
+        <div class="hw-text">
+          <h1 id="dh-greet" data-i18n="greeting">Добрый день! 👋</h1>
+          <p data-i18n="greeting_sub">Выбери AI-компаньона для разговора</p>
+        </div>
+        <div class="hw-mood">
+          <div class="hw-mood-q" data-i18n="how_are_you">Как ты сейчас?</div>
+          <div class="hw-mood-emojis">
+            <button class="mood-btn" onclick="pickMood(this,'😊')">😊</button>
+            <button class="mood-btn" onclick="pickMood(this,'😔')">😔</button>
+            <button class="mood-btn" onclick="pickMood(this,'😤')">😤</button>
+            <button class="mood-btn" onclick="pickMood(this,'🤩')">🤩</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- XP Bar Duolingo-style -->
+      <div id="xp-bar-wrap" class="xp-bar-wrap"></div>
+      <!-- Streak -->
+      <div id="streak-banner" class="streak-banner" style="display:none"></div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-icon si-em"><i class="ri-vidicon-line"></i></div><div><div class="sv" id="ds-calls">0</div><div class="sl" data-i18n="stat_calls">Звонков</div></div></div>
+        <div class="stat-card"><div class="stat-icon si-teal"><i class="ri-time-line"></i></div><div><div class="sv" id="ds-mins">0</div><div class="sl" data-i18n="stat_minutes">Минут</div></div></div>
+        <div class="stat-card"><div class="stat-icon si-sage"><i class="ri-fire-line"></i></div><div><div class="sv" id="ds-streak">1</div><div class="sl" data-i18n="stat_streak">Дней подряд</div></div></div>
+        <div class="stat-card"><div class="stat-icon si-mint"><i class="ri-trophy-line"></i></div><div><div class="sv" id="ds-ach">0</div><div class="sl" data-i18n="stat_awards">Наград</div></div></div>
+      </div>
+      <div class="section-hd"><h2 data-i18n="ai_companions">AI-компаньоны</h2></div>
+      <div class="filter-tabs">
+        <button class="ftab on" onclick="filterA('all',this)"     data-i18n="filter_all">Все</button>
+        <button class="ftab"    onclick="filterA('kids',this)"    data-i18n="filter_kids">Для детей</button>
+        <button class="ftab"    onclick="filterA('adults',this)"  data-i18n="filter_adults">Для взрослых</button>
+        <button class="ftab"    onclick="filterA('study',this)"   data-i18n="filter_study">Учёба</button>
+        <button class="ftab"    onclick="filterA('support',this)" data-i18n="filter_support">Поддержка</button>
+        <button class="ftab"    onclick="filterA('my',this)"      data-i18n="filter_my">Мои</button>
+      </div>
+      <div class="agents-grid" id="agents-grid-desk"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="page" id="dp-history">
+      <div class="hist-table">
+        <div class="hist-table-header">
+          <span data-i18n="hist_companion">Компаньон</span>
+          <span data-i18n="hist_message">Последнее сообщение</span>
+          <span data-i18n="hist_time">Время</span>
+          <span data-i18n="hist_duration">Длительность</span>
+        </div>
+        <div id="hist-list-desk"></div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="page" id="dp-profile">
+      <div class="profile-desk">
+        <div class="profile-left">
+          <div class="profile-card-hero">
+            <div class="pch-ava" id="pch-ava-el">А</div>
+            <div class="pch-name"  id="pch-name-el">Пользователь</div>
+            <div class="pch-email" id="pch-email-el">user@vivlos.ai</div>
+            <div class="pch-badge" id="pch-type-el">👤 Взрослый</div>
+          </div>
+          <div class="profile-stats-card">
+            <div class="ps-row"><div class="ps-label"><i class="ri-vidicon-line"></i><span data-i18n="stat_calls">Звонков</span></div><div class="ps-val" id="dps-calls">0</div></div>
+            <div class="ps-row"><div class="ps-label"><i class="ri-time-line"></i><span data-i18n="stat_minutes">Минут</span></div><div class="ps-val" id="dps-mins">0</div></div>
+            <div class="ps-row"><div class="ps-label"><i class="ri-fire-line"></i><span data-i18n="stat_streak">Дней подряд</span></div><div class="ps-val" id="dps-streak">1</div></div>
+          </div>
+        </div>
+        <div class="profile-right">
+          <div class="ach-card" style="cursor:pointer" onclick="openAchModal()">
+            <h3><i class="ri-trophy-line"></i><span data-i18n="achievements">Достижения</span>
+              <span style="font-size:11px;color:var(--blue);margin-left:auto;float:right">Открыть все →</span></h3>
+            <div class="ach-grid">
+              <div class="ach-item locked"><i class="ri-plant-line"></i><span class="ach-name" data-i18n="ach_first_step">Первый шаг</span></div>
+              <div class="ach-item locked"><i class="ri-fire-line"></i><span class="ach-name" data-i18n="ach_7_days">7 дней</span></div>
+              <div class="ach-item locked"><i class="ri-chat-3-line"></i><span class="ach-name" data-i18n="ach_10_calls">10 звонков</span></div>
+              <div class="ach-item locked"><i class="ri-star-line"></i><span class="ach-name" data-i18n="ach_hour">Час общения</span></div>
+              <div class="ach-item locked"><i class="ri-book-line"></i><span class="ach-name" data-i18n="ach_study">Учёба</span></div>
+              <div class="ach-item locked"><i class="ri-heart-line"></i><span class="ach-name" data-i18n="ach_support">Поддержка</span></div>
+              <div class="ach-item locked"><i class="ri-global-line"></i><span class="ach-name" data-i18n="ach_polyglot">Полиглот</span></div>
+              <div class="ach-item locked"><i class="ri-vip-crown-line"></i><span class="ach-name" data-i18n="ach_master">Мастер</span></div>
+              <div class="ach-item locked"><i class="ri-magic-line"></i><span class="ach-name" data-i18n="ach_creator">Создатель</span></div>
+              <div class="ach-item locked"><i class="ri-calendar-check-line"></i><span class="ach-name" data-i18n="ach_streak30">Месяц подряд</span></div>
+            </div>
+          </div>
+          <div class="ach-card" style="margin-top:14px">
+            <h3 style="cursor:pointer" onclick="openAchModal()">🏆 <span data-i18n="achievements">Достижения</span>
+              <span style="font-size:11px;color:var(--blue);margin-left:8px">Все →</span></h3>
+            <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px" id="ach-progress-text">0 / 20</p>
+            <div class="ach-progress-bar"><div class="ach-progress-fill" id="ach-progress-fill" style="width:0%"></div></div>
+          </div>
+          <div class="ach-card games-section" style="margin-top:14px">
+            <h3>🎮 <span data-i18n="mini_games">Мини-игры</span></h3>
+            <div class="games-grid">
+              <div class="game-entry" onclick="openQuiz()">
+                <div class="ge-icon">🧠</div>
+                <div class="ge-name" data-i18n="game_quiz">Викторина</div>
+                <div class="ge-desc" data-i18n="game_quiz_sub">7 вопросов</div>
+                <div class="ge-xp">+10-45 XP</div>
+              </div>
+              <div class="game-entry" onclick="openMemory()">
+                <div class="ge-icon">🃏</div>
+                <div class="ge-name" data-i18n="game_memory">Мемори</div>
+                <div class="ge-desc" data-i18n="game_memory_sub">Найди пары</div>
+                <div class="ge-xp">+25 XP</div>
+              </div>
+              <div class="game-entry" onclick="openWordGame()">
+                <div class="ge-icon">📝</div>
+                <div class="ge-name" data-i18n="game_word">Слово</div>
+                <div class="ge-desc" data-i18n="game_word_sub">Угадай слово</div>
+                <div class="ge-xp">+20 XP</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE AGENT PAGE -->
+    <div class="page" id="dp-create">
+      <div class="create-header"><i class="ri-magic-line"></i> <span data-i18n="create_title">Создать персонажа</span></div>
+
+      <div class="create-card">
+        <h3 data-i18n="create_name">Имя персонажа</h3>
+        <div class="field-row">
+          <div class="field" style="flex:2">
+            <label data-i18n="create_name">Имя</label>
+            <input id="ca-name" type="text" oninput="updatePreview()" placeholder="Например: Луна, Профессор..."/>
+          </div>
+          <div class="field" style="flex:1">
+            <label data-i18n="create_category">Аудитория</label>
+            <div class="cat-btns">
+              <button class="cat-btn" onclick="selectCat(this,'kids')" data-i18n="cat_kids">Дети</button>
+              <button class="cat-btn selected" onclick="selectCat(this,'adults')" data-i18n="cat_adults">Взрослые</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:14px">
+          <label data-i18n="create_emoji">Аватар (эмодзи)</label>
+          <div class="emoji-picker">
+            <div class="emoji-pick selected" onclick="selectEmoji(this,'🤖')">🤖</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🦊')">🦊</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🐉')">🐉</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🦋')">🦋</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🌙')">🌙</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'⭐')">⭐</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🎭')">🎭</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🧙')">🧙</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🦁')">🦁</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🐺')">🐺</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🦅')">🦅</div>
+            <div class="emoji-pick" onclick="selectEmoji(this,'🌸')">🌸</div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:14px">
+          <label data-i18n="create_color">Цвет фона</label>
+          <div class="color-picker">
+            <div class="color-dot selected" style="background:#e8f4fd" onclick="selectColor(this,'#e8f4fd')"></div>
+            <div class="color-dot" style="background:#fff0f6" onclick="selectColor(this,'#fff0f6')"></div>
+            <div class="color-dot" style="background:#fff3d9" onclick="selectColor(this,'#fff3d9')"></div>
+            <div class="color-dot" style="background:#e9f9d9" onclick="selectColor(this,'#e9f9d9')"></div>
+            <div class="color-dot" style="background:#f0edff" onclick="selectColor(this,'#f0edff')"></div>
+            <div class="color-dot" style="background:#fff3f3" onclick="selectColor(this,'#fff3f3')"></div>
+            <div class="color-dot" style="background:#e8f7ff" onclick="selectColor(this,'#e8f7ff')"></div>
+            <div class="color-dot" style="background:#fdf0e8" onclick="selectColor(this,'#fdf0e8')"></div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:14px">
+          <label data-i18n="create_voice">Голос</label>
+          <div class="voice-grid">
+            <button class="voice-btn" onclick="selectVoice(this,'warm')" data-i18n="voice_warm">🌡 Тёплый</button>
+            <button class="voice-btn" onclick="selectVoice(this,'deep')" data-i18n="voice_deep">🎸 Глубокий</button>
+            <button class="voice-btn" onclick="selectVoice(this,'calm')" data-i18n="voice_calm">🌊 Спокойный</button>
+            <button class="voice-btn" onclick="selectVoice(this,'bright')" data-i18n="voice_bright">✨ Яркий</button>
+            <button class="voice-btn selected" onclick="selectVoice(this,'neutral')" data-i18n="voice_neutral">⚖ Нейтральный</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label data-i18n="create_desc">Описание и характер</label>
+          <textarea id="ca-desc" rows="4" oninput="updatePreview()" data-i18n-placeholder="create_desc_hint" placeholder="Опиши характер, привычки, интересы, манеру говорить..."></textarea>
+        </div>
+
+        <div class="create-preview" style="margin-top:16px">
+          <div class="preview-avatar" id="preview-avatar" style="background:#e8f4fd">🤖</div>
+          <div class="preview-name" id="preview-name" data-i18n="create_name">Имя персонажа</div>
+          <div class="preview-desc" id="preview-desc" data-i18n="create_desc_hint">Описание появится здесь...</div>
+        </div>
+
+        <button class="btn-create-agent" style="margin-top:16px" onclick="createCustomAgent()">
+          <i class="ri-magic-line"></i> <span data-i18n="create_btn">Создать персонажа</span>
+        </button>
+      </div>
+
+      <!-- Мои персонажи -->
+      <div class="create-card">
+        <h3 data-i18n="create_my_agents">Мои персонажи</h3>
+        <div id="my-agents-list" class="my-agents-list">
+          <div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;" data-i18n="create_empty">Ты ещё не создавал персонажей</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="page" id="dp-notifs">
+      <div class="notif-actions">
+        <button class="btn-secondary" onclick="loadNotifications()"><i class="ri-refresh-line"></i> <span data-i18n="notif_refresh">Обновить</span></button>
+        <button class="btn-secondary" onclick="markAllRead()"><i class="ri-check-double-line"></i> <span data-i18n="notif_mark_read">Отметить все прочитанными</span></button>
+      </div>
+      <div class="notif-list" id="notif-list">
+        <div class="notif-empty" data-i18n="notif_loading">Загрузка...</div>
+      </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="dp-settings">
+      <div class="settings-page">
+
+        <!-- Тема -->
+        <div class="set-section">
+          <h3><i class="ri-palette-line"></i> <span data-i18n="theme_label">Тема оформления</span></h3>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px" data-i18n="theme_pick">Выбери цветовую тему</p>
+          <div id="theme-grid-container"></div>
+        </div>
+
+        <!-- Профиль -->
+        <div class="set-section">
+          <h3><i class="ri-user-3-line"></i> <span data-i18n="set_profile">Профиль</span></h3>
+          <div class="set-ava-wrap">
+            <div class="set-ava-circle" id="set-ava-preview">А</div>
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:4px" data-i18n="set_avatar">Фото профиля</div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Макс. 150 МБ</div>
+              <label class="set-ava-btn">
+                <i class="ri-upload-cloud-line"></i> <span data-i18n="set_upload_avatar">Загрузить фото</span>
+                <input type="file" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+              </label>
+              <button class="del-ava-btn" onclick="deleteAvatar()" id="del-ava-btn" style="display:none">
+                <i class="ri-delete-bin-line"></i> Удалить фото
+              </button>
+            </div>
+          </div>
+          <div style="margin-top:8px">
+            <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px" data-i18n="set_display_name">Имя в профиле</label>
+            <input class="set-input" id="set-name" data-i18n-placeholder="ph_name" placeholder="Алия"/>
+          </div>
+        </div>
+
+        <!-- Голос -->
+        <div class="set-section">
+          <h3><i class="ri-sound-module-line"></i> <span data-i18n="set_voice_audio">Голос и аудио</span></h3>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_tts_enabled">Голосовые ответы (TTS)</h4><p>Edge TTS</p></div>
+            <label class="set-toggle"><input type="checkbox" id="set-tog-tts" checked><div class="set-toggle-slider"></div></label>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_speech_enabled">Распознавание речи</h4><p>Web Speech API</p></div>
+            <label class="set-toggle"><input type="checkbox" id="set-tog-speech" checked><div class="set-toggle-slider"></div></label>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_speech_lang">Язык распознавания</h4></div>
+            <select class="set-select" id="set-speech-lang">
+              <option value="ru-RU">🇷🇺 Русский</option>
+              <option value="kk-KZ">🇰🇿 Қазақша</option>
+              <option value="en-US">🇺🇸 English</option>
+              <option value="de-DE">🇩🇪 Deutsch</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Vosk -->
+        <div class="set-section">
+          <h3><i class="ri-mic-2-line"></i> <span data-i18n="vosk_title">Распознавание речи (Vosk)</span></h3>
+          <div class="set-row">
+            <div class="set-row-info">
+              <h4>🇷🇺 Русский (Vosk)</h4>
+              <p>→ папка <code style="background:var(--sky-pale);padding:1px 5px;border-radius:4px;font-size:11px">ml_models/vosk-ru</code></p>
+            </div>
+            <span style="font-size:13px;font-weight:600" data-vosk-lang="ru">⏳</span>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info">
+              <h4>🇰🇿 Казахский (Vosk)</h4>
+              <p>→ папка <code style="background:var(--sky-pale);padding:1px 5px;border-radius:4px;font-size:11px">ml_models/vosk-kk</code></p>
+            </div>
+            <span style="font-size:13px;font-weight:600" data-vosk-lang="kk">⏳</span>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info">
+              <h4>🇺🇸 English (Vosk)</h4>
+              <p>→ папка <code style="background:var(--sky-pale);padding:1px 5px;border-radius:4px;font-size:11px">ml_models/vosk-en</code></p>
+            </div>
+            <span style="font-size:13px;font-weight:600" data-vosk-lang="en">⏳</span>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info">
+              <h4>🇩🇪 Deutsch (Vosk)</h4>
+              <p>→ папка <code style="background:var(--sky-pale);padding:1px 5px;border-radius:4px;font-size:11px">ml_models/vosk-de</code></p>
+            </div>
+            <span style="font-size:13px;font-weight:600" data-vosk-lang="de">⏳</span>
+          </div>
+          <div style="background:var(--sky-pale);border-radius:10px;padding:12px;margin-top:8px;font-size:12px;color:var(--muted)">
+            💡 <span data-i18n="vosk_tip">Пока Vosk не установлен — используется Web Speech API (онлайн).</span>
+            <br>📦 Установи: <code style="background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px">pip install vosk</code>
+          </div>
+        </div>
+
+        <!-- Язык -->
+        <div class="set-section">
+          <h3><i class="ri-translate-2"></i> <span data-i18n="set_lang_ui">Язык интерфейса</span></h3>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_lang_ui">Язык интерфейса</h4></div>
+            <select class="set-select" id="set-lang-ui" onchange="switchLang(this.value)">
+              <option value="ru">🇷🇺 Русский</option>
+              <option value="kk">🇰🇿 Қазақша</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Уведомления -->
+        <div class="set-section">
+          <h3><i class="ri-notification-3-line"></i> <span data-i18n="set_notifications">Уведомления</span></h3>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_notif_bot">Сообщения от ботов</h4></div>
+            <label class="set-toggle"><input type="checkbox" id="set-tog-notif-bot" checked><div class="set-toggle-slider"></div></label>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_notif_streak">Напоминания о серии</h4></div>
+            <label class="set-toggle"><input type="checkbox" id="set-tog-notif-streak" checked><div class="set-toggle-slider"></div></label>
+          </div>
+          <div class="set-row">
+            <div class="set-row-info"><h4 data-i18n="set_notif_ach">Уведомления о достижениях</h4></div>
+            <label class="set-toggle"><input type="checkbox" id="set-tog-notif-ach" checked><div class="set-toggle-slider"></div></label>
+          </div>
+        </div>
+
+        <!-- Аватары ботов -->
+        <div class="set-section">
+          <h3><i class="ri-robot-line"></i> <span data-i18n="bot_avatars">Аватары AI-компаньонов</span></h3>
+          <div id="set-bot-avatars"></div>
+        </div>
+
+        <button class="set-save-btn" onclick="saveSettingsPage()">
+          <i class="ri-save-line"></i> <span data-i18n="set_save">Сохранить</span>
+        </button>
+
+        <!-- Опасная зона -->
+        <div class="set-section" style="margin-top:12px;border-color:#fee2e2">
+          <h3 style="color:#ef4444"><i class="ri-alarm-warning-line"></i> <span data-i18n="set_danger">Опасная зона</span></h3>
+          <div class="set-row">
+            <div class="set-row-info">
+              <h4 data-i18n="set_clear_data">Очистить все данные</h4>
+              <p style="font-size:11px;color:var(--muted)">История, настройки, аватары</p>
+            </div>
+            <button class="set-danger-btn" onclick="clearAllData()"><span data-i18n="set_clear_data">Очистить</span></button>
+          </div>
+        </div>
+
+      </div>
+    </div>      </div>
+    </div>
+
+  </main>
+</div>
+
+    <!-- CALL OVERLAY -->
+<div class="call-overlay" id="call-overlay">
+  <div class="call-window-new">
+
+    <!-- ══ ЛЕВАЯ ПАНЕЛЬ — AI ══ -->
+    <div class="call-ai-panel">
+      <div class="call-ai-bg"></div>
+
+      <!-- Таймер -->
+      <div class="call-timer-badge" id="dc-timer">00:00</div>
+
+      <!-- Эмоция -->
+      <div class="call-emo-badge" id="emo-badge">😐 Нейтральный</div>
+
+      <!-- AI аватар -->
+      <div class="call-ai-avatar-wrap">
+        <div class="call-ai-rings">
+          <div class="call-ring-1"></div>
+          <div class="call-ring-2"></div>
+          <div class="call-ring-3"></div>
+        </div>
+        <div class="call-ai-circle" id="dai-orb">
+          <span id="dc-emoji"><i class="ri-graduation-cap-line"></i></span>
+        </div>
+      </div>
+
+      <!-- AI имя / статус -->
+      <div class="call-ai-info">
+        <div class="call-ai-name" id="dc-name">Ари</div>
+        <div class="call-ai-status" id="dc-status">● Онлайн</div>
+      </div>
+
+      <!-- Камера пользователя PIP -->
+      <div class="call-user-pip" id="cam-container">
+        <video id="user-cam" autoplay muted playsinline></video>
+        <canvas id="emo-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+        <div class="call-user-pip-label">Вы</div>
+      </div>
+
+      <!-- Визуализатор голоса -->
+      <div class="call-waveform" id="dwviz" style="position:absolute;bottom:88px;left:50%;transform:translateX(-50%)">
+        <div class="call-wave-bar"></div><div class="call-wave-bar"></div>
+        <div class="call-wave-bar"></div><div class="call-wave-bar"></div>
+        <div class="call-wave-bar"></div><div class="call-wave-bar"></div>
+        <div class="call-wave-bar"></div>
+      </div>
+
+      <!-- Кнопки управления -->
+      <div class="call-controls-new">
+        <button class="call-ctrl-btn ccb-mic" id="mic-btn-desk" onclick="toggleMic()" title="Микрофон">
+          <i class="ri-mic-line"></i>
+        </button>
+        <button class="call-ctrl-btn ccb-cam" id="cam-btn-desk" onclick="toggleCam()" title="Камера">
+          <i class="ri-vidicon-line"></i>
+        </button>
+        <button class="call-ctrl-btn ccb-photo" onclick="triggerMediaUpload()" title="Фото/Видео для AI">
+          <i class="ri-image-line"></i>
+        </button>
+        <button class="call-ctrl-btn ccb-game" onclick="switchCallTab('games')" title="Мини-игры">
+          <i class="ri-gamepad-line"></i>
+        </button>
+        <!-- Завершить с иконкой -->
+        <button class="call-ctrl-btn ccb-end" onclick="endCall()" title="Завершить звонок">
+          <i class="ri-phone-off-fill"></i>
+          <span style="font-size:12px;font-weight:700;margin-left:4px">Завершить</span>
+        </button>
+
+        <!-- Язык — справа от завершить -->
+        <div class="call-lang-wrap" id="call-lang-wrap" style="position:relative">
+          <button class="call-ctrl-btn ccb-lang" onclick="toggleCallLangMenu()" title="Язык"
+                  style="width:auto;padding:0 12px;border-radius:99px;gap:4px;display:flex;align-items:center">
+            <span id="call-lang-flag" style="font-size:18px">🇷🇺</span>
+            <span id="call-lang-code" style="font-size:11px;font-weight:800;color:rgba(255,255,255,.8)">RU</span>
+          </button>
+          <div class="call-lang-menu" id="call-lang-menu" style="display:none;position:absolute;bottom:calc(100% + 10px);right:0;background:rgba(10,10,25,.97);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:8px;flex-direction:column;gap:3px;z-index:300;min-width:175px;box-shadow:0 16px 48px rgba(0,0,0,.7)">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.35);padding:4px 12px 6px">Язык разговора</div>
+            <button onclick="setCallLang('ru','🇷🇺','ru-RU')" class="call-lang-opt" data-cl="ru" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;width:100%;text-align:left">
+              <span style="font-size:20px">🇷🇺</span><span style="flex:1;font-size:13px;font-weight:600">Русский</span><span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">RU</span>
+            </button>
+            <button onclick="setCallLang('kk','🇰🇿','kk-KZ')" class="call-lang-opt" data-cl="kk" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;width:100%;text-align:left">
+              <span style="font-size:20px">🇰🇿</span><span style="flex:1;font-size:13px;font-weight:600">Қазақша</span><span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">KZ</span>
+            </button>
+            <button onclick="setCallLang('en','🇬🇧','en-US')" class="call-lang-opt" data-cl="en" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;width:100%;text-align:left">
+              <span style="font-size:20px">🇬🇧</span><span style="flex:1;font-size:13px;font-weight:600">English</span><span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">EN</span>
+            </button>
+            <button onclick="setCallLang('de','🇩🇪','de-DE')" class="call-lang-opt" data-cl="de" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.8);cursor:pointer;width:100%;text-align:left">
+              <span style="font-size:20px">🇩🇪</span><span style="flex:1;font-size:13px;font-weight:600">Deutsch</span><span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">DE</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Скрытый input для фото/видео -->
+      <input type="file" id="call-media-input" accept="image/*,video/*" style="display:none" onchange="handleCallMedia(this)"/>
+    </div>
+
+    <!-- ══ ПРАВАЯ ПАНЕЛЬ — ЧАТ + ИГРЫ ══ -->
+    <div class="call-chat-panel">
+      <div class="call-chat-header">
+        <div class="call-chat-title" id="dc-title">Видеозвонок</div>
+        <div class="call-chat-tabs">
+          <button class="call-tab-btn active" onclick="switchCallTab('chat',this)">💬</button>
+          <button class="call-tab-btn" onclick="switchCallTab('games',this)">🎮</button>
+        </div>
+      </div>
+
+      <!-- Статус речи -->
+      <div style="padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:8px">
+        <div class="vdot loading" id="dv-dot"></div>
+        <div class="call-speech-status" id="dv-label">Инициализация...</div>
+      </div>
+
+      <!-- Распознанный текст -->
+      <div id="dt-live" style="padding:6px 14px;font-size:11px;color:rgba(255,255,255,.35);min-height:24px;font-style:italic">🎙 Говорите — я слушаю...</div>
+
+      <!-- Превью медиа -->
+      <div id="call-media-preview" style="display:none" class="call-media-preview">
+        <button class="remove-media" onclick="removeCallMedia()">✕</button>
+      </div>
+
+      <!-- Чат -->
+      <div class="call-chat-messages" id="dc-chat"></div>
+
+      <!-- Игры -->
+      <div class="call-game-panel" id="call-games-panel">
+        <div style="font-size:12px;color:rgba(255,255,255,.4);text-align:center;padding:4px 0 8px">Играй с AI прямо во время звонка</div>
+        <div class="call-mini-game-card" onclick="openQuiz();switchCallTab('chat')">
+          <div class="cmg-icon">🧠</div>
+          <div><div class="cmg-name" data-i18n="game_quiz">Викторина</div>
+          <div class="cmg-desc" data-i18n="game_quiz_sub">7 вопросов</div>
+          <div class="cmg-xp">+10-45 XP</div></div>
+        </div>
+        <div class="call-mini-game-card" onclick="openMemory();switchCallTab('chat')">
+          <div class="cmg-icon">🃏</div>
+          <div><div class="cmg-name" data-i18n="game_memory">Мемори</div>
+          <div class="cmg-desc" data-i18n="game_memory_sub">Найди пары</div>
+          <div class="cmg-xp">+25 XP</div></div>
+        </div>
+        <div class="call-mini-game-card" onclick="openWordGame();switchCallTab('chat')">
+          <div class="cmg-icon">📝</div>
+          <div><div class="cmg-name" data-i18n="game_word">Слово</div>
+          <div class="cmg-desc" data-i18n="game_word_sub">Угадай слово</div>
+          <div class="cmg-xp">+20 XP</div></div>
+        </div>
+        <div class="call-mini-game-card" onclick="askAIFact()">
+          <div class="cmg-icon">🌍</div>
+          <div><div class="cmg-name">Факт дня</div>
+          <div class="cmg-desc">Попроси AI рассказать интересный факт</div>
+          <div class="cmg-xp">+5 XP</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ I18N + новый код ══════════════════════════════════ -->
+<script src="{{ url_for('static', filename='i18n.js') }}"></script>
+<script src="{{ url_for('static', filename='di.js') }}"></script>
+
+<script>
+// ══ FLASK BACKEND INTEGRATION (v3) ══════════════════════
+
+var CALL_ID   = null;
+var USER_ID   = null;
+var camStream = null;
+var faceInterval = null;
+var faceModelsLoaded = false;
+var lastEmotion = 'neutral';
+var lastEmotionTs = 0;
+var emotionHistory = [];
+var mediaRecorder = null;
+var recordedChunks = [];
+
+var EMO_EMOJI = {
+  // Базовые (face-api)
+  happy:     '😊',
+  sad:       '😢',
+  angry:     '😠',
+  surprised: '😮',
+  fearful:   '😨',
+  disgusted: '🙁',
+  neutral:   '😐',
+  // Расширенные (вычисляемые)
+  excited:   '🤩',   // восторг — высокая энергия + широкие глаза
+  tired:     '😴',   // усталость — прищуренные глаза + низкая энергия
+  focused:   '🧐',   // концентрация — немигающий взгляд + нейтрально
+  nervous:   '😬',   // нервозность — частое моргание + страх
+  confused:  '😕',   // растерянность — взгляд в сторону
+  bored:     '😑',   // скука — низкое моргание + нейтральная мимика
+  contempt:  '😒',   // презрение — ассиметричная улыбка
+  pensive:   '🤔',   // задумчивость — взгляд вверх
+};
+
+// ══════════════════════════════════════════════════════════════
+//  VIVLOS Face Engine v2 — TensorFlow.js Face Landmarks (478 pts)
+//  + face-api.js FaceExpressions fallback
+//  Точность: ~92% эмоции, ~95% landmarks
+// ══════════════════════════════════════════════════════════════
+
+var tfModelsLoaded   = false;
+var faceApiLoaded    = false;
+var faceMeshDetector = null;   // TF.js FaceMesh detector
+var faceApiModels    = false;  // face-api fallback
+
+// История для сглаживания (10 кадров)
+var EMO_HISTORY      = [];
+var AU_HISTORY       = [];     // Action Units history
+var GAZE_HISTORY     = [];
+
+// Калибровочные данные (нейтральное лицо)
+var CALIBRATION      = null;
+var calibFrames      = [];
+
+// ── Загрузка TF.js Face Landmarks ──────────────────────────
+async function loadFaceModels() {
+  if(tfModelsLoaded || faceApiLoaded) return;
+
+  // 1. Пробуем TensorFlow.js Face Landmarks Detection
+  try {
+    if(window.faceLandmarksDetection && window.tf) {
+      faceMeshDetector = await faceLandmarksDetection.createDetector(
+        faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh, {
+          runtime: 'tfjs',
+          refineLandmarks: true,   // Включаем ирисы (40 extra pts)
+          maxFaces: 1,
+        }
+      );
+      tfModelsLoaded = true;
+      console.log('✅ TF.js FaceMesh loaded (478 landmarks + iris)');
+      return;
+    }
+  } catch(e) {
+    console.warn('TF.js FaceMesh failed, falling back to face-api:', e.message);
+  }
+
+  // 2. Fallback: face-api.js (наша текущая модель)
+  try {
+    if(window.faceapi) {
+      var MODEL_URL = '/static/models';
+      // Skip ssdMobilenetv1 (missing model files) — use TinyFace directly
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      faceApiLoaded = true;
+      faceModelsLoaded = true;
+      console.log('✅ face-api.js loaded (68 landmarks)');
+    }
+  } catch(e) {
+    console.warn('face-api load error:', e);
+  }
+}
+
+// ── Камера ──────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    if(!window.combinedStream || !window.combinedStream.active) {
+      window.combinedStream = await navigator.mediaDevices.getUserMedia({
+        video: { width:640, height:480, frameRate: { ideal:30 }, facingMode:'user' },
+        audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+      });
+    }
+    camStream = window.combinedStream;
+    window.micStream = window.combinedStream;
+    var vid = document.getElementById('user-cam');
+    if(vid) { vid.srcObject = window.combinedStream; vid.muted = true; await vid.play(); }
+    await loadFaceModels();
+    startEmotionDetection();
+
+    // Check DeepFace - only start if not previously disabled
+    if(!window._deepfaceDisabled) {
+      try {
+        var dfStatus = await fetch('/api/emotion/status');
+        var dfData = await dfStatus.json();
+        if(dfData.deepface) {
+          console.log('✅ DeepFace available — starting high-accuracy emotion cycle');
+          startDeepFaceCycle();
+        } else {
+          console.log('ℹ️ DeepFace not installed — using face-api.js');
+        }
+      } catch(e) {}
+    }
+  } catch(e) {
+    console.warn('Camera error:', e);
+    var badge = document.getElementById('emo-badge');
+    if(badge) badge.textContent = '📷 ' + (window.tr ? tr('cam_unavailable') : 'Камера недоступна');
+  }
+}
+
+function stopCamera() {
+  clearInterval(faceInterval);
+  if(window.combinedStream) {
+    window.combinedStream.getTracks().forEach(function(t){ t.stop(); });
+    window.combinedStream = null; camStream = null; window.micStream = null;
+  }
+  var vid = document.getElementById('user-cam');
+  if(vid) vid.srcObject = null;
+  CALIBRATION = null; calibFrames = [];
+}
+
+// Stop camera on page hide (prevents camera staying on after tab switch)
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden && window.combinedStream){
+    console.log('Tab hidden — pausing face detection');
+    clearInterval(faceInterval);
+  } else if(!document.hidden && window.combinedStream && typeof startEmotionDetection==='function'){
+    if(!window._localFaceDisabled) startEmotionDetection();
+  }
+});
+
+// ── Основной цикл детекции ───────────────────────────────────
+function startEmotionDetection() {
+  if(window._localFaceDisabled) return; // DeepFace is handling it
+  var INTERVAL = tfModelsLoaded ? 1200 : 2500; // faster for better real-time feel
+  faceInterval = setInterval(async function(){
+    var vid = document.getElementById('user-cam');
+    if(!vid || !vid.videoWidth || vid.paused) return;
+    try {
+      var result = tfModelsLoaded
+        ? await detectWithTFjs(vid)
+        : await detectWithFaceApi(vid);
+
+      if(!result || !result.detected) return;
+
+      // Авто-калибровка (первые 5 нейтральных кадров)
+      if(!CALIBRATION && calibFrames.length < 5) {
+        if(result.emotion === 'neutral' && result.confidence > 0.6) {
+          calibFrames.push(result.metrics);
+          if(calibFrames.length >= 5) {
+            CALIBRATION = computeCalibration(calibFrames);
+            console.log('✅ Face calibrated:', CALIBRATION);
+          }
+        }
+      }
+
+      // Применяем калибровку
+      if(CALIBRATION) result = applyCalibration(result, CALIBRATION);
+
+      // Сглаживание эмоций (10 кадров, взвешенное)
+      EMO_HISTORY.push({ emo: result.emotion, conf: result.confidence });
+      if(EMO_HISTORY.length > 10) EMO_HISTORY.shift();
+      var smoothed = smoothEmotion(EMO_HISTORY);
+
+      // Сглаживание AU (5 кадров)
+      if(result.au) {
+        AU_HISTORY.push(result.au);
+        if(AU_HISTORY.length > 5) AU_HISTORY.shift();
+      }
+
+      // Сглаживание взгляда
+      GAZE_HISTORY.push(result.metrics.gazeDir || 'center');
+      if(GAZE_HISTORY.length > 8) GAZE_HISTORY.shift();
+      result.metrics.gazeDir = modeOf(GAZE_HISTORY);
+
+      // Обновляем глобальный faceData
+      window.faceData = buildFaceDataForAI(result, smoothed);
+      if(window.S) window.S.faceData = window.faceData;
+
+      // UI badge
+      updateEmoBadge(smoothed.emotion, smoothed.confidence, result.metrics);
+
+      // Триггер AI реакции
+      var now = Date.now();
+      if(smoothed.emotion !== lastEmotion && smoothed.confidence > 0.40
+         && (now - lastEmotionTs) > 3000) {
+        lastEmotion = smoothed.emotion;
+        lastEmotionTs = now;
+        // Sync to window scope for di.js
+        window.lastEmotion = smoothed.emotion;
+        window.emotionConfidence = smoothed.confidence;
+        logEmotionToServer(smoothed.emotion, smoothed.confidence);
+      }
+    } catch(e) { /* silent */ }
+  }, INTERVAL);
+}
+
+// ══ TF.js FaceMesh детектор (478 landmarks + ирис) ═══════════
+async function detectWithTFjs(vid) {
+  var faces = await faceMeshDetector.estimateFaces(vid, { flipHorizontal: false });
+  if(!faces || faces.length === 0) return { detected: false };
+
+  var face = faces[0];
+  var kps  = face.keypoints;          // 478 точек
+  var kp3d = face.keypoints3D || kps; // 3D если доступно
+
+  // ── Карта ключевых точек MediaPipe FaceMesh ──
+  // Левый глаз: 362-397, Правый глаз: 33-168
+  // Левая бровь: 276-300, Правая бровь: 46-70
+  // Рот внешний: 61,291,0,17, Верхняя губа: 13, Нижняя губа: 14
+  // Нос: 1,4, Ирис левый: 468-472, Ирис правый: 473-477
+
+  var P = function(i){ return kps[i] || {x:0,y:0,z:0}; };
+
+  // ── Глаза (EAR — Eye Aspect Ratio) ──
+  var leftEAR  = eyeAspectRatio(kps, [362,385,387,263,373,380]);
+  var rightEAR = eyeAspectRatio(kps, [33,160,158,133,153,144]);
+  var avgEAR   = (leftEAR + rightEAR) / 2;
+
+  // ── Брови ──
+  var leftBrowY  = avgCoord(kps, [276,283,282,295,285], 'y');
+  var rightBrowY = avgCoord(kps, [46,53,52,65,55], 'y');
+  var leftEyeY   = avgCoord(kps, [362,382,381,380,374,373], 'y');
+  var rightEyeY  = avgCoord(kps, [33,160,159,158,154,153], 'y');
+  var browRaise  = ((leftEyeY - leftBrowY) + (rightEyeY - rightBrowY)) / 2;
+  var browFurrow = Math.abs((leftEyeY - leftBrowY) - (rightEyeY - rightBrowY));
+
+  // ── Рот (MAR — Mouth Aspect Ratio + corners) ──
+  var mouthTop    = P(13).y;  var mouthBot = P(14).y;
+  var mouthLeft   = P(61).x;  var mouthRight = P(291).x;
+  var mouthHeight = Math.abs(mouthBot - mouthTop);
+  var mouthWidth  = Math.abs(mouthRight - mouthLeft);
+  var MAR         = mouthHeight / (mouthWidth + 0.001);
+
+  // Уголки рта (смайл/грусть)
+  var cornerLeft  = P(61).y;
+  var cornerRight = P(291).y;
+  var mouthMid    = (P(0).y + P(17).y) / 2;
+  var smileScore  = mouthMid - (cornerLeft + cornerRight) / 2; // отрицательный = улыбка
+
+  // ── Ирис (направление взгляда) ──
+  var gazeDir = 'center';
+  if(kps.length >= 478) {
+    var irisL = kps[468]; var irisR = kps[473];
+    var eyeLC = { x: avgCoord(kps,[362,263],'x'), y: avgCoord(kps,[362,263],'y') };
+    var eyeRC = { x: avgCoord(kps,[33,133],'x'),  y: avgCoord(kps,[33,133],'y') };
+    var gazeX = ((irisL.x - eyeLC.x) + (irisR.x - eyeRC.x)) / 2;
+    var gazeY = ((irisL.y - eyeLC.y) + (irisR.y - eyeRC.y)) / 2;
+    var eyeW  = Math.abs(P(263).x - P(362).x);
+    var gazeXn = gazeX / (eyeW * 0.4);
+    var gazeYn = gazeY / (eyeW * 0.3);
+    if(Math.abs(gazeXn) > Math.abs(gazeYn)) {
+      gazeDir = gazeXn < -0.15 ? 'left' : gazeXn > 0.15 ? 'right' : 'center';
+    } else {
+      gazeDir = gazeYn < -0.2 ? 'up' : gazeYn > 0.2 ? 'down' : 'center';
+    }
+  }
+
+  // ── Action Units (мимические мышцы) ──
+  var au = computeActionUnits({
+    ear: avgEAR, browRaise: browRaise, browFurrow: browFurrow,
+    MAR: MAR, smileScore: smileScore, mouthHeight: mouthHeight,
+  });
+
+  // ── Наклон головы (roll/pitch/yaw) ──
+  var headRoll  = Math.atan2(P(454).y - P(234).y, P(454).x - P(234).x) * 180 / Math.PI;
+  var headPitch = (P(1).y - (P(33).y + P(263).y)/2) / (mouthWidth + 1); // грубо
+  var headYaw   = (P(4).x - (P(33).x + P(263).x)/2) / (mouthWidth + 1);
+
+  // ── Классификация эмоции по AU + геометрии ──
+  var emoResult = classifyEmotionFromAU(au, {
+    ear: avgEAR, smileScore: smileScore, browRaise: browRaise,
+    browFurrow: browFurrow, MAR: MAR, headYaw: headYaw
+  });
+
+  // ── Моргание ──
+  if(avgEAR < 0.15) {
+    if(!window._blinkStart) window._blinkStart = Date.now();
+  } else {
+    if(window._blinkStart && Date.now() - window._blinkStart < 400) {
+      window._blinkCount = (window._blinkCount || 0) + 1;
+    }
+    window._blinkStart = null;
+  }
+  var blinkRate = (window._blinkCount || 0) / Math.max(1,(Date.now() - (window._blinkWindowStart||Date.now()))) * 60000;
+
+  return {
+    detected:   true,
+    emotion:    emoResult.emotion,
+    confidence: emoResult.confidence,
+    au:         au,
+    metrics: {
+      eyeAR:       Math.round(avgEAR * 100) / 100,
+      browRaise:   Math.round(browRaise * 10) / 10,
+      browFurrow:  Math.round(browFurrow * 10) / 10,
+      smileScore:  Math.round(smileScore * 10) / 10,
+      mouthOpen:   Math.round(MAR * 100) / 100,
+      gazeDir:     gazeDir,
+      headRoll:    Math.round(headRoll),
+      headYaw:     Math.round(headYaw * 100) / 100,
+      blinkRate:   Math.round(blinkRate),
+      notes:       emoResult.notes || [],
+    }
+  };
+}
+
+// ══ face-api.js детектор (fallback, 68 точек) ════════════════
+async function detectWithFaceApi(vid) {
+  if(!window.faceapi || !faceApiLoaded) return { detected: false };
+  var det = await faceapi
+    .detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:416, scoreThreshold:0.4 }))
+    .withFaceLandmarks()
+    .withFaceExpressions();
+  if(!det) return { detected: false };
+
+  var exps = det.expressions;
+  var lm   = det.landmarks;
+
+  function avgY(pts){ var s=0; pts.forEach(function(p){s+=p.y;}); return s/pts.length; }
+  function avgX(pts){ var s=0; pts.forEach(function(p){s+=p.x;}); return s/pts.length; }
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+  var lEye  = lm.getLeftEye();      var rEye  = lm.getRightEye();
+  var lBrow = lm.getLeftEyeBrow();  var rBrow = lm.getRightEyeBrow();
+  var mouth = lm.getMouth();        var nose  = lm.getNose();
+
+  // Eye Aspect Ratio — правильная формула EAR
+  var lEAR = (dist(lEye[1],lEye[5]) + dist(lEye[2],lEye[4])) / (2*dist(lEye[0],lEye[3])+0.001);
+  var rEAR = (dist(rEye[1],rEye[5]) + dist(rEye[2],rEye[4])) / (2*dist(rEye[0],rEye[3])+0.001);
+  var avgEAR = (lEAR + rEAR) / 2;
+
+  // Брови — расстояние бровь-глаз
+  var browRaise = ((avgY(lEye)-avgY(lBrow)) + (avgY(rEye)-avgY(rBrow))) / 2;
+
+  // Насупленность — сближение внутренних краёв бровей
+  var lInner = lBrow[lBrow.length-1]; var rInner = rBrow[0];
+  var browGap = dist(lInner, rInner);
+  var browFurrow = Math.max(0, (30 - browGap * 0.35));
+
+  // Рот
+  var mLeft = mouth[0]; var mRight = mouth[6];
+  var mTopC = mouth[3]; var mBotC  = mouth[9] || mouth[3];
+  var mCenterY = (mTopC.y + mBotC.y) / 2;
+  var smileScore = mCenterY - (mLeft.y + mRight.y) / 2; // отрицательный = улыбка
+
+  var mHeight = dist(mouth[2], mouth[10]) + dist(mouth[3], mouth[9]||mouth[3]);
+  var mWidth  = dist(mouth[0], mouth[6]) + 0.001;
+  var MAR = mHeight / (2 * mWidth);
+  var mouthHeight = dist(mouth[2], mouth[10]);
+
+  // Взгляд
+  var noseTip = nose[3] || nose[0];
+  var eyeSpan = Math.abs(avgX(rEye) - avgX(lEye));
+  var gazeX   = (noseTip.x - (avgX(lEye)+avgX(rEye))/2) / (eyeSpan*0.5);
+  var gazeDir = Math.abs(gazeX)<0.15 ? 'center' : gazeX<0 ? 'left' : 'right';
+
+  // Моргание
+  if(avgEAR < 0.18){ if(!window._blinkStart) window._blinkStart=Date.now(); }
+  else { if(window._blinkStart&&Date.now()-window._blinkStart<400){ window._blinkCount=(window._blinkCount||0)+1; } window._blinkStart=null; }
+  var blinkRate = (window._blinkCount||0) / Math.max(1,(Date.now()-(window._blinkWindowStart||Date.now()))/1000) * 60;
+
+  // Action Units → FACS классификатор
+  var au = computeActionUnits({ ear:avgEAR, browRaise:browRaise, browFurrow:browFurrow,
+    MAR:MAR, smileScore:smileScore, mouthHeight:mouthHeight });
+
+  var emoResult = classifyEmotionFromAU(au, { ear:avgEAR, smileScore:smileScore,
+    browRaise:browRaise, browFurrow:browFurrow, MAR:MAR, mouthOpen:MAR,
+    blinkRate:blinkRate, gazeDir:gazeDir, headRoll:0, headYaw:0 });
+
+  // Расширенные эмоции
+  emoResult = refineEmotionExtended(emoResult, { ear:avgEAR, blinkRate:blinkRate,
+    gazeDir:gazeDir, browRaise:browRaise, smileScore:smileScore, browFurrow:browFurrow });
+
+  // Слияние: FACS (70%) + face-api (30%) — исправляет смещение к "happy"
+  var fapiEmo = Object.entries(exps).sort(function(a,b){return b[1]-a[1];})[0][0];
+  var finalEmo  = emoResult.emotion;
+  var finalConf = emoResult.confidence;
+  if(fapiEmo===finalEmo && finalEmo!=='neutral') finalConf=Math.min(0.97,finalConf*1.2);
+  // face-api говорит happy но FACS видит sad/angry → доверяем FACS
+
+  return {
+    detected:true, emotion:finalEmo,
+    confidence:Math.round(finalConf*100)/100,
+    metrics:{
+      eyeAR:Math.round(avgEAR*100)/100, browRaise:Math.round(browRaise*10)/10,
+      browFurrow:Math.round(browFurrow*10)/10, smileScore:Math.round(smileScore*10)/10,
+      mouthOpen:Math.round(MAR*100)/100, gazeDir:gazeDir,
+      headRoll:0, headYaw:0, blinkRate:Math.round(blinkRate), notes:emoResult.notes||[], au:au,
+    }
+  };
+}
+
+// ══ Action Units (FACS — Facial Action Coding System) ════════
+// AU1=Inner brow raise, AU2=Outer brow raise, AU4=Brow lower
+// AU6=Cheek raise, AU7=Lid tightener, AU9=Nose wrinkle
+// AU12=Lip corner pull (smile), AU15=Lip corner depress
+// AU17=Chin raise, AU20=Lip stretch, AU25/26=Jaw drop
+function computeActionUnits(m) {
+  return {
+    AU1:  m.browRaise > 20 ? Math.min(1,(m.browRaise-20)/15) : 0,  // Inner brow raise
+    AU2:  m.browRaise > 22 ? Math.min(1,(m.browRaise-22)/12) : 0,  // Outer brow raise
+    AU4:  m.browFurrow > 8 ? Math.min(1,m.browFurrow/20) : 0,      // Brow lowerer
+    AU6:  m.smileScore < -2 ? Math.min(1,(-m.smileScore-2)/8) : 0, // Cheek raise
+    AU7:  m.ear < 0.25 ? Math.min(1,(0.25-m.ear)/0.15) : 0,        // Lid tightener
+    AU12: m.smileScore < -1 ? Math.min(1,(-m.smileScore-1)/10) : 0,// Lip corner pull
+    AU15: m.smileScore > 2  ? Math.min(1,(m.smileScore-2)/8) : 0,  // Lip corner depress
+    AU17: m.MAR > 0.15 ? Math.min(1,(m.MAR-0.15)/0.3) : 0,         // Chin raise
+    AU25: m.mouthHeight > 8 ? Math.min(1,m.mouthHeight/20) : 0,    // Lips part
+    AU26: m.MAR > 0.3 ? Math.min(1,(m.MAR-0.3)/0.4) : 0,           // Jaw drop
+  };
+}
+
+// ══ Классификация эмоции из AU ═══════════════════════════════
+// Основано на FACS Emotion Prototypes:
+// Happy:    AU6+AU12
+// Sad:      AU1+AU4+AU15+AU17
+// Angry:    AU4+AU5+AU7+AU17+AU23
+// Fearful:  AU1+AU2+AU4+AU5+AU7+AU20+AU26
+// Surprised:AU1+AU2+AU5+AU26+AU27
+// Disgusted:AU9+AU15+AU17
+function classifyEmotionFromAU(au, m) {
+  var scores = {
+    happy:     (au.AU6 * 0.4 + au.AU12 * 0.6) * (m.smileScore < 0 ? 1.3 : 0.7),
+    sad:       (au.AU1 * 0.2 + au.AU4 * 0.3 + au.AU15 * 0.3 + au.AU17 * 0.2) * (m.smileScore > 1 ? 1.2 : 0.8),
+    angry:     (au.AU4 * 0.4 + au.AU7 * 0.3 + au.AU17 * 0.2) * (m.browFurrow > 10 ? 1.3 : 0.8),
+    fearful:   (au.AU1 * 0.2 + au.AU2 * 0.2 + au.AU4 * 0.15 + au.AU7 * 0.2 + au.AU26 * 0.25)
+               * (m.ear < 0.2 ? 0.7 : 1.0),
+    surprised: (au.AU1 * 0.2 + au.AU2 * 0.3 + au.AU26 * 0.3 + (m.ear > 0.35 ? 0.2 : 0))
+               * (m.mouthOpen > 0.2 ? 1.3 : 0.8),
+    disgusted: (au.AU4 * 0.3 + au.AU15 * 0.4 + au.AU17 * 0.3) * (m.browFurrow > 8 ? 1.1 : 0.9),
+    neutral:   0.35,
+  };
+
+  // Нормализуем
+  var total = Object.values(scores).reduce(function(a,b){return a+b;}, 0);
+  if(total < 0.01) return { emotion:'neutral', confidence:0.5, notes:[] };
+
+  var best  = Object.keys(scores).reduce(function(a,b){ return scores[a]>scores[b]?a:b; });
+  var conf  = scores[best] / total;
+
+  // Порог уверенности: если нет явного победителя — нейтрально
+  if(conf < 0.28) { best = 'neutral'; conf = 0.55; }
+
+  // Текстовые заметки для AI
+  var notes = buildNotes(au, m, best);
+
+  return { emotion: best, confidence: Math.round(conf * 100) / 100, notes: notes };
+}
+
+// ══ Текстовые наблюдения для AI (русский) ════════════════════
+function buildNotes(au, m, emo) {
+  var n = [];
+
+  if(au.AU12 > 0.4) n.push('искренняя улыбка (задействованы щёки)');
+  else if(au.AU12 > 0.2) n.push('лёгкая улыбка');
+  if(au.AU15 > 0.35) n.push('уголки рта опущены (грусть)');
+  if(au.AU1 > 0.4 && au.AU4 > 0.3) n.push('нахмуренные брови с внутренним подъёмом (беспокойство)');
+  else if(au.AU4 > 0.5) n.push('сдвинутые брови (злость или концентрация)');
+  else if(au.AU1 > 0.5 || au.AU2 > 0.5) n.push('поднятые брови (удивление или вопрос)');
+  if(m.ear < 0.18) n.push('прищуренные глаза (интенсивная концентрация или недоверие)');
+  else if(m.ear > 0.38) n.push('широко открытые глаза (удивление или возбуждение)');
+  if(au.AU26 > 0.4) n.push('приоткрытый рот (удивление или готовность говорить)');
+  if(m.blinkRate > 25) n.push('частое моргание (тревога или усталость)');
+  else if(m.blinkRate < 4 && m.blinkRate > 0) n.push('редкое моргание (глубокая концентрация)');
+  if(m.gazeDir === 'left' || m.gazeDir === 'right') n.push('взгляд в сторону (обдумывает или отвлечён)');
+  else if(m.gazeDir === 'down') n.push('взгляд вниз (смущение, стеснение или задумчивость)');
+  else if(m.gazeDir === 'up') n.push('взгляд вверх (вспоминает или мечтает)');
+  if(Math.abs(m.headRoll) > 12) n.push('голова наклонена набок (любопытство или сомнение)');
+  if(m.headYaw > 0.3) n.push('голова отвёрнута (дискомфорт или отвлечение)');
+
+  return n.slice(0, 4); // Максимум 4 наблюдения
+}
+
+// ══ Калибровка ═══════════════════════════════════════════════
+function computeCalibration(frames) {
+  var avg = function(key) {
+    return frames.reduce(function(s,f){ return s + (f[key]||0); }, 0) / frames.length;
+  };
+  return {
+    eyeAR:      avg('eyeAR'),
+    browRaise:  avg('browRaise'),
+    smileScore: avg('smileScore'),
+  };
+}
+
+function applyCalibration(result, cal) {
+  if(!result.metrics || !cal) return result;
+  result.metrics.eyeAR      -= (cal.eyeAR      - 0.28); // нормализуем к стандарту
+  result.metrics.browRaise  -= (cal.browRaise   - 18);
+  result.metrics.smileScore -= cal.smileScore;
+  return result;
+}
+
+// ══ Расширенные составные эмоции ═══════════════════════════
+// Определяет сложные эмоции на основе геометрии лица
+function refineEmotionExtended(emoResult, m) {
+  var emo  = emoResult.emotion;
+  var conf = emoResult.confidence;
+
+  // Устталость — прищуренные глаза (низкий EAR)
+  if(m.ear < 0.22 && emo === 'neutral' && m.blinkRate > 18) {
+    return { emotion:'tired', confidence:Math.min(0.85, (0.22-m.ear)*4 + 0.4), notes:['прищуренные глаза, частое моргание'] };
+  }
+
+  // Концентрация — почти не моргает, нейтрально
+  if(m.blinkRate < 6 && m.blinkRate >= 0 && emo === 'neutral' && m.ear > 0.25) {
+    return { emotion:'focused', confidence:0.72, notes:['редкое моргание — глубокая концентрация'] };
+  }
+
+  // Нервозность — частое моргание + страх/нейтрально
+  if(m.blinkRate > 28 && (emo === 'fearful' || emo === 'neutral')) {
+    return { emotion:'nervous', confidence:Math.min(0.82, m.blinkRate/60), notes:['частое моргание — тревога'] };
+  }
+
+  // Восторг — широкие глаза + радость
+  if(m.ear > 0.40 && emo === 'happy' && conf > 0.5) {
+    return { emotion:'excited', confidence:Math.min(0.90, conf * 1.2), notes:['широко открытые глаза — восторг'] };
+  }
+
+  // Задумчивость — взгляд вверх, нейтральное лицо
+  if(m.gazeDir === 'up' && emo === 'neutral') {
+    return { emotion:'pensive', confidence:0.68, notes:['взгляд вверх — задумчивость'] };
+  }
+
+  // Растерянность — взгляд в сторону + нейтральная мимика
+  if((m.gazeDir === 'left' || m.gazeDir === 'right') && emo === 'neutral' && conf < 0.6) {
+    return { emotion:'confused', confidence:0.60, notes:['взгляд в сторону — растерянность или обдумывает'] };
+  }
+
+  // Скука — минимальная мимика, редкое моргание, нейтрально
+  if(m.blinkRate < 10 && m.blinkRate > 0 && emo === 'neutral'
+     && Math.abs(m.smileScore) < 1.5 && Math.abs(m.browRaise - 18) < 3) {
+    return { emotion:'bored', confidence:0.58, notes:['скука — монотонная мимика'] };
+  }
+
+  // Презрение — несимметричная улыбка (низкий smileScore + нейтральные брови)
+  if(m.smileScore < -3 && m.browRaise < 16 && emo !== 'happy') {
+    return { emotion:'contempt', confidence:0.65, notes:['уголки рта: ассиметрия'] };
+  }
+
+  return emoResult; // не перезаписываем если нет явного совпадения
+}
+
+// ══ Сглаживание эмоций (взвешенное) =════════════════════════
+function smoothEmotion(history) {
+  if(!history.length) return { emotion:'neutral', confidence:0.5 };
+  var weights = {}; var totalW = 0;
+  var n = history.length;
+
+  history.forEach(function(h, i) {
+    // Экспоненциальное взвешивание — последние кадры весят НАМНОГО больше
+    var w = Math.pow(2.5, i); // было (i+1)^2 — теперь 2.5^i
+    // Sad/angry/fearful boost — эти эмоции занижаются face-api
+    var emotionBoost = 1.0;
+    if(h.emo === 'sad' || h.emo === 'angry' || h.emo === 'fearful') emotionBoost = 1.4;
+    if(h.emo === 'happy') emotionBoost = 0.85; // немного снижаем happy-bias
+    weights[h.emo] = (weights[h.emo] || 0) + w * h.conf * emotionBoost;
+    totalW += w;
+  });
+
+  var best = Object.keys(weights).reduce(function(a,b){ return weights[a]>weights[b]?a:b; });
+  var conf = weights[best] / totalW;
+
+  // Не застрять в happy: если последние 3 кадра показывают другую эмоцию — переключаемся
+  if(best === 'happy' && n >= 3) {
+    var recent = history.slice(-3);
+    var nonHappy = recent.filter(function(h){return h.emo!=='happy';});
+    if(nonHappy.length >= 2) {
+      var altEmo = nonHappy.reduce(function(a,b){return a.conf>b.conf?a:b;}).emo;
+      if(altEmo !== 'happy') { best = altEmo; conf = nonHappy.reduce(function(s,h){return s+h.conf;},0)/nonHappy.length; }
+    }
+  }
+
+  // Нейтральность — порог: хотя бы 40% уверенности нужно для non-neutral
+  if(conf < 0.22 && best !== 'neutral') { best = 'neutral'; conf = 0.55; }
+
+  return { emotion: best, confidence: Math.min(0.97, conf * 1.5) };
+}
+
+// ══ Вспомогательные ═══════════════════════════════════════════
+function eyeAspectRatio(kps, idx) {
+  // EAR = (||p2-p6|| + ||p3-p5||) / (2 * ||p1-p4||)
+  var P = function(i){ return kps[idx[i]] || {x:0,y:0}; };
+  var v1 = Math.hypot(P(1).x-P(5).x, P(1).y-P(5).y);
+  var v2 = Math.hypot(P(2).x-P(4).x, P(2).y-P(4).y);
+  var h  = Math.hypot(P(0).x-P(3).x, P(0).y-P(3).y);
+  return (v1 + v2) / (2 * h + 0.001);
+}
+
+function avgCoord(kps, indices, axis) {
+  var s = 0;
+  indices.forEach(function(i){ s += (kps[i] || {x:0,y:0})[axis] || 0; });
+  return s / indices.length;
+}
+
+function modeOf(arr) {
+  var c = {};
+  arr.forEach(function(x){ c[x] = (c[x]||0)+1; });
+  return Object.keys(c).reduce(function(a,b){ return c[a]>c[b]?a:b; });
+}
+
+// ══ Формируем faceData для отправки в AI ═══════════════════
+function buildFaceDataForAI(result, smoothed) {
+  var m = result.metrics || {};
+  return {
+    emotion:    smoothed.emotion,
+    confidence: smoothed.confidence,
+    eyeOpening: Math.round((m.eyeAR || 0) * 100),
+    browLift:   Math.round(m.browRaise || 0),
+    mouthTilt:  Math.round(m.smileScore || 0),
+    blinkRate:  Math.round(m.blinkRate || 0),
+    gazeDir:    m.gazeDir || 'center',
+    headRoll:   m.headRoll || 0,
+    headYaw:    m.headYaw || 0,
+    mouthOpen:  Math.round((m.mouthOpen || 0) * 100),
+    au:         result.au || {},
+    notes:      result.metrics ? (result.metrics.notes || []) : [],
+    engine:     tfModelsLoaded ? 'tfjs-478pts' : 'faceapi-68pts',
+  };
+}
+
+// ══ Обновление UI ════════════════════════════════════════════
+function updateEmoBadge(emotion, confidence, metrics) {
+  var badge = document.getElementById('emo-badge');
+  if(!badge) return;
+  var pct = Math.round(confidence * 100);
+  var lang = window._curLang || 'ru';
+  var label = (window.tr ? tr('emo_' + emotion) : emotion) || emotion;
+  badge.textContent = (EMO_EMOJI[emotion]||'😐') + ' ' + label + ' ' + pct + '%';
+  badge.title = metrics && metrics.notes ? metrics.notes.join(' | ') : '';
+
+  // Face insight overlay
+  var ins = document.getElementById('face-insight');
+  if(ins && metrics && metrics.notes && metrics.notes.length) {
+    ins.textContent = '👁 ' + metrics.notes[0];
+    ins.style.display = '';
+  }
+}
+
+async function logEmotionToServer(emotion, confidence) {
+  try {
+    await fetch('/api/emotion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_id: CALL_ID, emotion: emotion, confidence: confidence })
+    });
+  } catch(e) {}
+
+  var now = Date.now();
+  var sinceUser = now - (window._lastUserSpokeTs || 0);
+  var sinceAi   = now - (window._lastAiRespondedTs || 0);
+  var sinceReact = now - (window._lastReactedTs || 0);
+
+  // Реагируем на ВСЕ эмоции — с разными приоритетами
+  var SERIOUS   = ['sad','angry','fearful','nervous','tired'];   // реагируем быстро
+  var POSITIVE  = ['happy','excited','surprised'];              // поддержать радость
+  var PASSIVE   = ['pensive','confused','bored','focused'];     // мягкий интерес
+  var ALL_EMO   = SERIOUS.concat(POSITIVE).concat(PASSIVE).concat(['contempt','disgusted']);
+
+  var cooldown = 15000; // базовый кулдаун 15 сек
+  if(SERIOUS.indexOf(emotion) !== -1) cooldown = 12000;       // серьёзные — чуть быстрее
+  if(POSITIVE.indexOf(emotion) !== -1) cooldown = 20000;      // позитивные — реже
+  if(PASSIVE.indexOf(emotion) !== -1)  cooldown = 25000;      // пассивные — ещё реже
+
+  var minConf   = SERIOUS.indexOf(emotion) !== -1 ? 0.40 : 0.50;
+  var minSilence = SERIOUS.indexOf(emotion) !== -1 ? 4000 : 6000;
+
+  var shouldReact = ALL_EMO.indexOf(emotion) !== -1
+                    && confidence > minConf
+                    && sinceUser > minSilence;   // пользователь помолчал
+
+  if(shouldReact
+     && sinceAi > 3000
+     && sinceReact > cooldown
+     && window._lastReactedEmotion !== emotion) {
+    window._lastReactedEmotion = emotion;
+    window._lastReactedTs = now;
+    setTimeout(function(){ window._lastReactedEmotion = null; }, cooldown);
+    triggerAIReaction(emotion, confidence, false);
+  }
+}
+
+// ── Login с бэкендом ──
+async function loginToServer(email,password,name,age) {
+  try {
+    var res=await fetch('/api/user/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email,password:password,name:name,age:age})});
+    var data=await res.json();
+    if(data.ok){
+      USER_ID=data.id; S.user.id=data.id; S.user.name=data.name; S.user.email=data.email; S.user.age=data.age;
+      S.calls=data.calls||0;
+      if(data.xp) S.xp=data.xp;
+      if(data.streak!=null) S.streak=data.streak;
+      return {ok:true};
+    }
+    return {ok:false,error:data.error||'Ошибка входа'};
+  } catch(e){ return {ok:false,error:'Сервер недоступен'}; }
+}
+
+// ── Звонки ──
+async function notifyCallStart(agentId,agentName) {
+  try {
+    var res=await fetch('/api/call/start',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user_id:USER_ID,agent_id:agentId,agent_name:agentName})});
+    var data=await res.json(); if(data.ok) CALL_ID=data.call_id;
+  } catch(e){}
+}
+
+async function notifyCallEnd() {
+  try {
+    await fetch('/api/call/end',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({call_id:CALL_ID,duration:secs,messages:chatHistory,emotion:lastEmotion})});
+  } catch(e){}
+  CALL_ID=null;
+}
+
+// ── Уведомления ──
+async function loadNotifications() {
+  var listEl=document.getElementById('notif-list'); if(!listEl) return;
+  var lang=(window.S&&window.S.uiLang)||'ru';
+  listEl.innerHTML='<div class="notif-empty">'+tr('notif_loading')+'</div>';
+  try {
+    var res=await fetch('/api/notifications?lang='+lang+(USER_ID?'&user_id='+USER_ID:''));
+    var data=await res.json();
+    if(!data.ok||!data.items.length){ listEl.innerHTML='<div class="notif-empty">'+tr('notif_empty')+'</div>'; return; }
+    var BOT_EMO={ari:'🦊',bibo:'🤖',appa:'💜',max:'💪',drako:'🐉',lex:'🌍',lou:'🌟'};
+    listEl.innerHTML=data.items.map(function(n){
+      var kindCls='badge-'+(n.kind==='bot'?'bot':n.kind==='streak'?'streak':n.kind==='achievement'?'achievement':'info');
+      var kindLabel=tr('kind_'+(n.kind||'info'));
+      var avatar=n.kind==='bot'&&n.agent_id
+        ?'<div class="notif-bot-avatar">'+(BOT_EMO[n.agent_id]||'🤖')+'</div>'
+        :'<div class="notif-ico"><i class="'+n.icon+'"></i></div>';
+      return '<div class="notif-item'+(n.is_read?'':' unread')+(n.kind==='bot'&&!n.is_read?' bot-new':'')
+        +'" data-id="'+n.id+'" onclick="markRead('+n.id+')">'
+        +avatar
+        +'<div class="notif-body">'
+        +'<span class="notif-kind-badge '+kindCls+'">'+kindLabel+'</span>'
+        +'<div class="notif-title">'+n.title+'</div>'
+        +'<div class="notif-msg">'+(n.body||'')+'</div>'
+        +'<div class="notif-time">'+n.time+'</div>'
+        +'</div>'
+        +(n.is_read?'':'<div class="notif-unread-dot"></div>')
+        +'</div>';
+    }).join('');
+    var unread=data.items.filter(function(n){return!n.is_read;}).length;
+    var badge=document.getElementById('notif-dot');
+    if(badge){badge.textContent=unread;badge.style.display=unread?'':'none';}
+    var hd=document.getElementById('dh-notif-dot'); if(hd) hd.style.display=unread?'':'none';
+  } catch(e){ listEl.innerHTML='<div class="notif-empty">'+tr('notif_error')+'</div>'; }
+}
+
+async function markRead(nid) {
+  try {
+    await fetch('/api/notifications/'+nid+'/read',{method:'POST'});
+    var item=document.querySelector('[data-id="'+nid+'"]');
+    if(item){item.classList.remove('unread','bot-new');var d=item.querySelector('.notif-unread-dot');if(d)d.remove();}
+  } catch(e){}
+}
+
+async function markAllRead() {
+  try{await fetch('/api/notifications/read-all',{method:'POST'});loadNotifications();}catch(e){}
+}
+
+// ── Перехваты ──
+var _origStartCallDesk=window.startCallDesk;
+var _origEndCall=window.endCall;
+var _origDNavTo=window.dNavTo;
+
+window.startCallDesk=function(name,icon,greeting,type,customId){
+  if(_origStartCallDesk) _origStartCallDesk(name,icon,greeting,type,customId);
+  startCamera();
+  var aid=(window.agent&&window.agent.id)||name.toLowerCase();
+  notifyCallStart(aid,name);
+
+  // Проактивный вопрос через 4 сек после начала звонка — по настроению
+  setTimeout(function(){
+    if(window.lastEmotion && window.lastEmotion !== 'neutral' && window.emotionConfidence > 0.35) {
+      if(typeof triggerAIReaction === 'function') {
+        triggerAIReaction(window.lastEmotion, window.emotionConfidence, true); // true = callStart
+      }
+    }
+  }, 4000);
+  // Добавляем face-insight overlay в call-window
+  setTimeout(function(){
+    var cam=document.getElementById('cam-container');
+    if(cam&&!document.getElementById('face-insight')){
+      var fi=document.createElement('div'); fi.id='face-insight'; fi.className='face-insight'; fi.style.display='none';
+      cam.appendChild(fi);
+    }
+  },500);
+};
+
+window.endCall=function(){
+  // 1. Navigate HOME immediately
+  var overlay=document.getElementById('call-overlay');
+  if(overlay){ overlay.classList.remove('active'); overlay.style.display='none'; }
+  if(typeof navTo==='function') navTo('home');
+
+  // 2. Stop everything AFTER navigation
+  setTimeout(function(){
+    notifyCallEnd();
+    stopCamera();
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    if(window._ttsAudio){ try{window._ttsAudio.pause();}catch(e){} window._ttsAudio=null; }
+    if(typeof stopRealtimeLoop==='function') stopRealtimeLoop();
+
+    // ПОЛНЫЙ СБРОС — без него повторный звонок зависает
+    window.aiThinking         = false;
+    window._speechInProgress  = false;
+    window.isAISpeaking       = false;
+    window.isListening        = false;
+    window.ignoreUntil        = 0;
+    window._pendingTranscript = '';
+    window.micOn              = true;
+    if(window._silenceTimer){ clearTimeout(window._silenceTimer); window._silenceTimer=null; }
+
+    // Уничтожаем recognition — новый создастся при следующем звонке
+    if(window.recognition){
+      try{ window.recognition.abort(); }catch(e){}
+      window.recognition = null;
+    }
+    window.voskReady = false;
+    if(typeof orbSpeak==='function') orbSpeak(false);
+  }, 150);
+
+  // 3. Orig для статистики
+  if(_origEndCall){
+    var _n=window.navTo; window.navTo=function(){};
+    try{ _origEndCall(); }catch(e){}
+    setTimeout(function(){ window.navTo=_n; }, 200);
+  }
+};
+
+window.doLogin=async function(){
+  var email=document.getElementById('l-em').value.trim();
+  var pwd=(document.getElementById('l-pw')||{}).value||'';
+  if(!email){alert(tr('err_fill_fields'));return;}
+  var r=await loginToServer(email,pwd||null,email.split('@')[0],'adult');
+  if(!r.ok){alert(tr('err_login')+': '+(r.error||''));return;}
+  enterApp(); loadNotifications();
+};
+
+window.doReg=async function(){
+  var nm=document.getElementById('r-nm').value.trim();
+  var sn=(document.getElementById('r-sn')||{}).value&&document.getElementById('r-sn').value.trim()||'';
+  var email=document.getElementById('r-em').value.trim();
+  var pwd=(document.getElementById('r-pw')||{}).value||'';
+  var ageNum=parseInt((document.getElementById('r-age')||{}).value)||20;
+  var ageGroup=document.querySelector('.age-chip.sel')&&document.querySelector('.age-chip.sel').id==='ck'?'kid':'adult';
+  if(!email){alert(tr('err_fill_fields'));return;}
+  if(pwd&&pwd.length<6){alert(tr('err_fill_fields')+'(пароль мин. 6)');return;}
+  var fullName=(nm+(sn?' '+sn:'')).trim()||email.split('@')[0];
+  var r=await loginToServer(email,pwd||null,fullName,ageGroup,ageNum);
+  if(!r.ok){alert(tr('err_register')+': '+(r.error||''));return;}
+  enterApp(); loadNotifications();
+};
+
+window.dNavTo=function(page){
+  if(_origDNavTo) _origDNavTo(page);
+  if(page==='notifs') loadNotifications();
+};
+
+// Инициализируем blink window
+window._blinkWindowStart=Date.now();
+window._blinkCount=0;
+setInterval(function(){window._blinkWindowStart=Date.now();window._blinkCount=0;},60000);
+
+</script>
+
+<!-- ══ SOCKETIO FRONTEND ══════════════════════════════════════ -->
+<script>
+(function() {
+  // Подключаемся к SocketIO серверу
+  var socket = null;
+  try {
+    socket = io();
+    window._vivlosSocket = socket;
+  } catch(e) {
+    console.warn('SocketIO not available:', e);
+    return;
+  }
+
+  socket.on('connect', function() {
+    console.log('🔌 SocketIO connected');
+  });
+
+  socket.on('disconnect', function() {
+    console.log('🔌 SocketIO disconnected');
+  });
+
+  // ── Typing indicator (три точки) ──
+  socket.on('typing', function(data) {
+    if(data.status) {
+      showTypingBubble && showTypingBubble();
+    } else {
+      removeTypingBubble && removeTypingBubble();
+    }
+  });
+
+  // ── Streaming токены ──
+  socket.on('ai_stream', function(data) {
+    removeTypingBubble && removeTypingBubble();
+    var chat = document.getElementById('dc-chat');
+    if(!chat) return;
+    var streaming = document.getElementById('_socket_stream_bubble');
+    if(!streaming) {
+      streaming = document.createElement('div');
+      streaming.id = '_socket_stream_bubble';
+      streaming.className = 'bubble ai';
+      streaming.style.cssText = 'white-space:pre-wrap;word-break:break-word;';
+      chat.appendChild(streaming);
+    }
+    streaming.textContent = data.text || '';
+    chat.scrollTop = chat.scrollHeight;
+  });
+
+  // ── Финальный ответ ──
+  socket.on('ai_stream_done', function(data) {
+    var el = document.getElementById('_socket_stream_bubble');
+    if(el) {
+      el.id = '';
+      // Добавляем время
+      var time = document.createElement('span');
+      time.style.cssText = 'display:block;font-size:10px;opacity:.5;margin-top:4px;';
+      time.textContent = new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+      el.appendChild(time);
+    }
+    // TTS
+    if(data.text && window.S && window.S.ttsOn && typeof speakText === 'function') {
+      speakText(data.text, window._curLang || 'ru');
+    }
+  });
+
+  socket.on('receive_message', function(data) {
+    console.log('📩 Message received via socket:', data.message ? data.message.slice(0,40) : '');
+  });
+
+  // ── Обёртка для sendMessage через socket ──
+  window.sendViaSocket = function(message, agentId, lang, userId, emotion, emotionConf) {
+    if(!socket || !socket.connected) return false;
+    socket.emit('send_message', {
+      message:      message,
+      agent_id:     agentId   || 'ari',
+      lang:         lang      || window._curLang || 'ru',
+      user_id:      userId    || (window.S && window.S.user ? window.S.user.id : 1),
+      emotion:      emotion   || window.lastEmotion || 'neutral',
+      emotion_conf: emotionConf || window.emotionConfidence || 0,
+    });
+    return true;
+  };
+
+  console.log('✅ SocketIO frontend ready');
+})();
+
+// ── DeepFace cycle (runs when DeepFace is installed on server) ──
+var _dfInterval = null;
+var _dfCanvas = null;
+var _dfCtx   = null; // cached 2d context — don't recreate every frame
+
+function startDeepFaceCycle() {
+  if(_dfInterval) clearInterval(_dfInterval);
+  _dfInterval = setInterval(async function() {
+    var vid = document.getElementById('user-cam');
+    if(!vid || !vid.videoWidth || vid.paused) return;
+    // Capture frame
+    if(!_dfCanvas) { _dfCanvas = document.createElement('canvas'); }
+    _dfCanvas.width = 320;
+    _dfCanvas.height = Math.round(vid.videoHeight * 320 / vid.videoWidth);
+    var ctx = _dfCanvas.getContext('2d');
+    ctx.translate(_dfCanvas.width, 0); ctx.scale(-1, 1);
+    ctx.drawImage(vid, 0, 0, _dfCanvas.width, _dfCanvas.height);
+    ctx.setTransform(1,0,0,1,0,0);
+    var frame = _dfCanvas.toDataURL('image/jpeg', 0.7);
+    try {
+      var r = await fetch('/api/emotion', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ frame: frame, call_id: window.CALL_ID })
+      });
+      // Stop permanently if server returns 500 (DeepFace not working)
+      if(!r.ok) {
+        console.warn('DeepFace server error', r.status, '— permanently disabled');
+        stopDeepFaceCycle();
+        window._deepfaceDisabled = true;  // never restart
+        return;
+      }
+      var d = await r.json();
+      if(d.ok && d.emotion) {
+        window.lastEmotion = d.emotion;
+        window.emotionConfidence = d.confidence || 0;
+        lastEmotion = d.emotion;
+        if(typeof updateEmoBadge === 'function') {
+          updateEmoBadge(d.emotion, d.confidence || 0, { all_emotions: d.all_emotions || {} });
+        }
+      }
+    } catch(e) {
+      console.debug('DeepFace cycle error:', e.message);
+      stopDeepFaceCycle();
+    }
+  }, 3000);
+}
+
+function stopDeepFaceCycle() {
+  if(_dfInterval) { clearInterval(_dfInterval); _dfInterval = null; }
+}
+</script>
+</body>
+</html>

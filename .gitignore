@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Env & secrets
+.env
+.env.local
+.env.txt
+*.pem
+
+# DB & runtime
+instance/*.db
+instance/*.db-*
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Large models (user downloads separately)
+ml_models/
+*.pt
+*.bin
+*.onnx
+whisper_models/
+
+# Node (if any)
+node_modules/
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+
+# Local database and user data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
